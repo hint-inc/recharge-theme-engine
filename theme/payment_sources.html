@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+	<h2 class="outlet-heading mobile-off">subscription billing information</h2>
+	<div class="outlet-content">
+      {% if not payment_sources %}
+        <div class="grid">
+          <div class="grid__item medium-up--one-full"> 
+            <p>No payment source on file.</p>
+          </div>
+        </div>
+      {% elif not payment_sources | selectattr("status", "equalto", "active") %}
+        <div class="grid">
+          <div class="grid__item medium-up--one-full"> 
+            <p>No active payment source.</p>
+          </div>
+        </div>
+      {% else %}
+        {% for payment_source in payment_sources %}
+          <fieldset>
+            <div class="billing">
+              {% if payment_source.payment_type in ['credit', 'debit'] %}
+                <h4 class="billing-title" >Card on file</h4>
+                <p>
+                  {% if payment_source.status == 'failed' %}
+                 	 Card was removed or expired.
+                  {% else %}
+                    {% if not payment_source.card_brand %}
+                      Card details unavailable
+                    {% else %}
+                      {{ payment_source.card_brand }} ending in {{ payment_source.card_last4 }}<br>
+                      Expires {{ payment_source.card_exp_month }}/{{ payment_source.card_exp_year }}
+                    {% endif %}
+                  {% endif %}
+                </p>
+              {% elif payment_source.payment_type == 'paypal' %}
+                <h4>PayPal account</h4>
+                <p>If you need to update your payment settings, you should sign in to your PayPal account.</p>
+                <p>Sign in to<a href="https://www.paypal.com/signin" target="_blank">PayPal</a>.</p>
+              {% elif payment_source.payment_type == 'apple_pay' %}
+                <h4>Linked Apple Pay</h4>
+                <p>If you need to update your payment settings, navigate to Settings > Wallet  & Apple Pay on your mobile device.</p>
+                <p>Learn more about <a class="billing-btn" href="https://support.apple.com/en-us/HT205583" target="_blank">Apple Pay</a>.</p>
+              {% else %}
+                <h4>Payment processor</h4>
+                <p>Payment source could not be identified. Please update your card information.</p>
+              {% endif %}
+              
+              {% if payment_source.payment_type not in ['credit', 'debit'] %}
+                <p>Adding a credit card will reset your payment type from {{ payment_source.payment_type | replace('_', ' ') | capitalize }}.</p>
+              {% endif %}
+              <p>
+                <a class="billing-btn" href="{{ payment_source_url }}">Update card</a>
+              </p>
+            </div>
+
+            <div class="billing">
+              <h4 class="billing-title">Billing address</h4>
+              {% if not payment_source.billing_address %}
+              <p>No billing address on file.</p>
+              {% else %}
+              {% set address = payment_source.billing_address %}
+              <p>
+                {{ address.first_name }} {{ address.last_name }}<br>
+                {% if address.company %}
+                {{ address.company }}<br>
+                {% endif %}
+                {{ address.address1 }} {{ address.address2 }}<br>
+                {{ address.city }} {{ address.province }} {{ address.zip }}<br>
+                {{ address.country }}<br>
+                {{ address.phone }}<br>
+              </p>
+              <p>
+              	<a class="billing-btn" href="{{ payment_source.id | payment_source_address_url }}">Edit address</a>
+              </p>
+              {% endif %}
+            </div>
+          </fieldset>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

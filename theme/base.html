@@ -1,0 +1,104 @@
+<style>{% include '_styles.css' %}</style>
+<style>{% include '_custom.css' %}</style>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+<script>{% include '_jquery-ui.js' %}</script>
+<script>{% include '_scripts.js' %}</script>
+<script>{% include '_confirmation-modal.js' %}</script>
+
+<div class="body"> 
+  <div class="account-wrapper">
+    <div class="sidebar">
+      <h2 class="sidebar__greeting">hello {{ customer.first_name }} {{ customer.last_name }}</h2>
+      <span class="sidebar__email">{{ customer.email }}</span>
+      <ul class="sidebar__nav">
+        <li class="sidebar__nav-item"><a href="/account?page=order-history">order history</a></li>
+        <li class="sidebar__nav-item"><a href="/account?page=rewards">rewards</a></li>
+		<li class="sidebar__nav-item active">
+          <a href="">subscriptions</a>
+          <ul class="sidebar__subnav">
+            <li class="sidebar__subnav-item">
+              <a href="{{ subscription_list_url }}">active subscriptions</a>
+            </li>
+            <li class="sidebar__subnav-item">
+              <a href="{{ schedule_url }}">upcoming subscription shipments</a>
+            </li>
+            <li class="sidebar__subnav-item">
+              <a href="{{ payment_source_list_url }}">subscription billing information</a>
+            </li>
+            <li class="sidebar__subnav-item">
+				<a href="{{ address_list_url }}">subscription addresses</a>
+			</li>
+          </ul>
+        </li>
+        <li class="sidebar__nav-item">
+          {% raw %}
+          	{{ 'log out' | customer_logout_link }}
+          {% endraw %}
+        </li>
+      </ul> 
+      <div class="sidebar__select-wrapper">
+        <select class="sidebar__select">
+          <option value="{{ subscription_list_url }}" {% if self == 'subscriptions' %}selected{% endif %}>
+            Active subscriptions
+          </option>
+          <option value="{{ schedule_url }}" {% if self == 'delivery_schedule' %}selected{% endif %}>
+            Upcoming subscription shipments
+          </option>
+          <option value="{{ payment_source_list_url }}" {% if self == 'customer' %}selected{% endif %}>
+            Subscription billing information
+          </option>
+        </select>
+        {% raw %}
+        	<img class="sidebar__select-carat" src="{{ 'ico-select.svg' | asset_url }}" />
+        {% endraw %}
+      </div>
+    </div>
+    <div class="outlet">
+      {% block content %}{% endblock %} 
+    </div>
+  </div>
+</div>
+
+
+<script>
+  window.recharge = {
+    customer: '{{ customer.hash }}'  
+  }
+</script>
+
+
+<script>
+  // <select> navigation for mobile
+  function loadNewPage(url) {
+    window.location.href = url;
+  }
+  
+  $(".sidebar__select").on("change", function(ev) {
+    var url = ev.target.value;
+    loadNewPage(url);
+  });
+  
+    // acitvate link if on URL for both selector and sidebar naviagtion
+    var current = location.pathname;  
+    $('.sidebar__subnav-item:eq(0)').addClass('active'); 
+    $('.sidebar__subnav-item a').each(function(){
+        var $this = $(this);
+        // if the current path is like this link, make it active
+        if($this.attr('href').indexOf(current) !== -1){
+            $('.sidebar__subnav-item:eq(0)').removeClass('active');
+            $this.parent().addClass('active');
+        }  
+    })
+    $('option[value="'+location.href+'"]').prop('selected',true)
+    if(! $('option[value="'+location.href+'"]').length){
+      console.log('cant find')
+      var currentPage = $('.outlet-heading').text()
+      if(currentPage.length){
+        var option = `<option value="${currentPage}" selected="selected">${currentPage}</option>`
+        $('.sidebar__select').append(option)
+      }
+    }
+  
+</script>
+<script>{% include '_dropdown.js' %}</script>
+<script>{% include '_show-fees.js' %}</script>

@@ -1,0 +1,45 @@
+{# for testing #} 
+{% for prop in subscription.properties %}
+{% if prop.name == 'fee_id' %} 
+<span class="fee">{{prop.value}}</span>
+{% endif %}
+{% endfor %}
+    
+<div class="sub inactive {% for prop in subscription.properties %}{% if prop.name == 'Fee' %} fee {% endif %}{% endfor %}" > 
+  <div class="sub__info">
+    <div class="sub__info-left">
+      <div class="form-control"> 
+        <h3>{{subscription.product_title}}</h3> 
+      </div> 
+      <p class="price">Price: ${{ subscription.price | times(subscription.quantity)}}</p> 
+      <ul class="action-list"> 
+        <li> <button data-properties='{{ subscription.properties | json }}'
+                     class="btn activate-submit-{{ subscription.id }}"
+                     name="activate"
+                     id="activate" 
+                     onclick="handleUpdates({
+                                id: {{ subscription.id }},
+                                input: 'activate'
+                                });">Reactivate</button></li>   
+      </ul>
+    </div>
+    <div class="sub__info-right"> 
+ 
+    </div>
+  </div>
+</div>
+<div class="modal activate-modal activate-modal-{{ subscription.id }}" style="display: none;">
+  <div class="modal__content">
+    <h4 class="modal-title">Would you like to make these changes?</h4>
+    <p class="modal-body">
+      Reactivate: {{ subscription.product_title }} 
+    </p>
+    <button
+            class="modal-cta btn"
+            data-url="{{ subscription | subscription_url }}"
+            >
+      Confirm Changes
+    </button>
+  </div>
+  <button class="modal__overlay"></button>
+</div>

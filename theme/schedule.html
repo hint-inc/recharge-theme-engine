@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if schedule %}
+  <h3 class="outlet-heading mobile-off">Upcoming Order</h3>
+  <div class="outlet-content" data-customer-hash="{{ customer.hash }}">
+    <!-- Upcoming order code -->
+    <div class="deliveries">
+      <div class="order-schedule">
+        <p class="delivery-notice">Add one time products or skip your next upcoming shipment below.</p>
+      </div>
+      {% for delivery in schedule %}
+        {% set index = loop.index0 %}
+        {% if index == 0 %}
+          {% for grouper, list in delivery.orders | groupby('subscription.address_id') %}
+            <div class="shipment">
+              <div class="shipment__left">
+                <div class="shipment__info">
+                  <p class="shipment-date">
+                    <strong>Shipping Date:</strong>
+                    {{ delivery.date | date('%B, %-d, %Y') }}
+                  </p>
+                  <p class="shipment-address">
+                    <strong>Shipping Address:</strong>
+                    {% for address in addresses | selectattr('id', 'equalto', grouper) %}
+                      {{ address.address1 }}
+                    {% endfor %}
+                  </p>
+                </div>
+                <div class="shipment__products">
+                  <div class="shipment__product-row shipment__product-row--header">
+                    <p>products</p>
+                    <p>qty</p>
+                    <p></p>
+                  </div>
+                  {% for order in list %}
+                  {% set subscription = order.subscription %}
+
+                  {% assign is_fee = false %}
+                  {% if subscription.product %}
+                    {% if subscription.product.shopify_details.product_type == 'Recycling Fee' %}
+                      {% assign is_fee = true %}
+                    {% endif %}
+                  {% endif %}
+
+                  {% set charge = order.charge %}
+                  <div data-type="{{subscription.status}}" class="shipment__product-row {% if is_fee %}fee{% endif %}">
+                    <p>
+                      {% if order.is_skipped %}<strike>{% endif %}
+                        {% if 'Flavors of the Month' in subscription.product_title %}
+                          hint&reg; Flavors of the Month Bundle Subscription
+                        {% else %}
+                          {{ subscription.product_title }}
+                        {% endif %}
+                        {% if order.is_skipped %}</strike>{% endif %}
+                    </p>
+                    <p>
+                      {% if order.is_skipped %}<strike>{% endif %}
+                        {{ subscription.quantity }}
+                        {% if order.is_skipped %}</strike>{% endif %}
+                    </p>
+                    <p>
+                      {% if is_fee == false %} 
+
+                      {% if subscription.status == 'ONETIME'%}
+                      <button data-properties='{{ subscription.properties | json }}'
+                        class="skip-btn cancel_onetime-select cancel_onetime-select-{{ subscription.id }}"
+                        onclick="handleUpdates({
+                          id: {{ subscription.id }},
+                          key:'{{ subscription.id }}',
+                          input: 'cancel_onetime'
+                        });"
+                      >
+                        Cancel One Time
+                      </button>
+                      {# CANCEL ONETIME MODAL #}
+                      <div class="modal cancelonetime-modal cancel_onetime-modal-{{ subscription.id }}" style="display: none;">
+                        <div class="modal__content">
+                          <h4 class="modal-title">Are you sure you want to cancel this one time product?</h4>
+                          <p class="modal-body"></p>
+                          <button class="modal-cta btn">
+                            Confirm Changes
+                          </button>
+                        </div>
+                        <button class="modal__overlay"></button>
+                      </div>
+                      {# END CANCEL ONETIME MODAL #}
+                      {% endif %}
+
+                      {% if order.is_skipped %}
+                      <button {% if is_fee %}disabled{% endif %} data-properties='{{ subscription.properties | json }}'
+                        class="skip-btn unskip-select unskip-select-{{ subscription.id }}-0"
+                        onclick="handleUpdates({
+                          id: {{ subscription.id  }},
+                          charge: {{ charge.id}},
+                          key:'{{ subscription.id }}-0',
+                          input: 'unskip',
+                          date: '{{ delivery.date }}'
+                        });"
+                      >
+                        Unskip This Item
+                      </button>
+                      {# UNSKIP MODAL #}
+                      <div class="modal unskip-modal unskip-modal-{{ subscription.id }}-0" style="display: none;">
+                        <div class="modal__content">
+                          <h4 class="modal-title">Are you sure you want to unskip this item?</h4>
+                          <p class="modal-body"></p>
+                          <button class="modal-cta btn">
+                            Confirm Changes
+                          </button>
+                        </div>
+                        <button class="modal__overlay"></button>
+                      </div>
+                      {# END UNSKIP MODAL #}
+                      {% elif order.is_skippable %}
+                      <button {% if is_fee %}disabled{% endif %} data-properties='{{ subscription.properties | json }}'
+                        class="skip-btn skip-select skip-select-{{ subscription.id }}-0"
+                        onclick="handleUpdates({
+                          charge: {% if charge %}{{ charge.id }}{% else %}null{% endif %},
+                          id: '{{ subscription.id }}',
+                          key:'{{ subscription.id }}-0',
+                          input: 'skip',
+                          date: '{{ delivery.date }}'
+                        });"
+                      >
+                        Skip This Item
+                      </button>
+                      {# SKIP MODAL #}
+                      <div class="modal skip-modal skip-modal-{{ subscription.id }}-0" style="display: none;">
+                        <div class="modal__content">
+                          <h4 class="modal-title">Are you sure you want to skip this item?</h4>
+                          <p class="modal-body"></p>
+                          <button class="modal-cta btn">
+                            Confirm Changes
+                          </button>
+                        </div>
+                        <button class="modal__overlay"></button>
+                      </div>
+                      {# END SKIP MODAL #}
+                      {% endif %}
+                      {% endif %}
+                    </p>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="shipment__product-row ">
+                  <p></p>
+                  <p></p>
+                  <p>
+                    <a class="onetime-btn" onclick="openOneTimeModal();">add one time product</a>
+                  </p>
+                </div>
+              </div>
+              <div class="onetime-modal" style="display: none;" data-onetime="">
+                <div class="modal__content">
+                  <h4 data-addressId="{{ grouper }}" data-nextChargeDate="{{ delivery.date }}" class="js-modal-title modal-title">Add one time
+                    products to your next subscription shipment</h4>
+                  <button class="modal-close" onclick="closeOneTimeModal()">×</button>
+                  {% raw %}
+                  <div class="modal-main-content">
+                    {%- comment -%}
+                    Promotional - Conditionaly load if products exist within "recharge-promo" collection
+                    {%- endcomment -%}
+                    {% if collections.recharge-promo.products.length > 0 %}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint featured products</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.recharge-promo.products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {%- comment -%}
+                    Still
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint still</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.original.products %}
+
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Sparkling
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint sparkling</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.['hint-fizz'].products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Kick
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint kick</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.['hint-kick'].products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Kids
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint kids</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.['hint-kids'].products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Bundles
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint bundles</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.bundles.products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Deodorant
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint deodorant</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.deodorant.products %}
+                      {% if product.available %}
+
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                            Add to order
+                          </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Sunscreen
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint sunscreen</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.sunscreen.products %}
+                      {% if product.available %}
+  
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        {% if product.tags contains 'sold out' %}<div class="rch-oos-message">temporarily sold out</div> {% endif %}
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button {% if product.tags contains 'sold out' %}disabled{% endif %} class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}  {% if product.tags contains 'sold out' %}disabled{% endif %}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                          {% if product.tags contains 'sold out' %}
+                          sold out
+                          {% else %}
+                          Add to order
+                          {% endif %}
+                        </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+
+                    {%- comment -%}
+                    Sun Bundles
+                    {%- endcomment -%}
+                    <div class="modal-list-heading">
+                      <h2 class="modal-list-heading__title">hint sun bundles</h2>
+                    </div>
+                    <ul class="modal-list">
+                      {% for product in collections.sunstick-family-pack.products %}
+                      {% if product.available %}
+                      <li class="modal-list__item ot-card" {% if product.tags  contains "subscription_only" %}style="display:none" {% endif %}>
+                        <img style="display: block;" src="{{ product.featured_image | img_url: '400x' }}" alt="" />
+                        <div>
+                          <span class="onetime-title">{{ product.title }}</span>
+                          <span class="onetime-price">{{ product.price | money }}</span>
+                          <button class="onetime-add-to-order billing-btn js-add-onetime--{{ product.id }}" onclick="handleOneTimeUpdates({
+                              id: '{{ product.id | json }}',
+                              variantID: '{{ product.variants[0].id | json }}',
+                              qty: 1,
+                              key:'{{  product.id  }}',
+                              input: 'add_onetime'
+                            });">
+                            Add to order
+                          </button>
+                        </div>
+                      </li>
+                      {% endif %}
+                      {% endfor %}
+                    </ul>
+                  </div>
+                  {% endraw %}
+                  <div style="display: none;" class="modal-controls">
+                    <button class="billing-btn js-close-onetime-modal">Done</button>
+                  </div>
+                </div>
+                <button class="modal__overlay--onetime"></button>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <br>
+{% endif %}
+
+<h3 class="outlet-heading mobile-off">Order Schedule</h3>
+<div class="outlet-content" data-customer-hash="{{ customer.hash }}">
+  <div class="deliveries">
+    <div class="order-schedule">
+      <p class="delivery-notice">Future deliveries will be added to your schedule as the shipment date approaches.</p>
+    </div>
+    {% if not schedule %}
+      <p>No deliveries have been scheduled for your account.</p>
+    {% else %}
+      <div class="shipments">
+        {% for delivery in schedule %}
+          {% set index = loop.index0 %}
+          {% if index != 0 %}
+            {% for grouper, list in delivery.orders | groupby('subscription.address_id') %}
+              <div class="shipment">
+                <div class="shipment__left">
+                  <div class="shipment__info">
+                    <p class="shipment-date">
+                      <strong>Shipping Date:</strong>
+                      {{ delivery.date | date('%B, %-d, %Y') }}
+                    </p>
+                    <p class="shipment-address">
+                      <strong>Shipping Address:</strong>
+                      {% for address in addresses | selectattr('id', 'equalto', grouper) %}
+                        {{ address.address1 }}
+                      {% endfor %}
+                    </p>
+                  </div>
+                  <div class="shipment__products">
+                    <div class="shipment__product-row shipment__product-row--header">
+                      <p>products</p>
+                      <p>qty</p>
+                      <p></p>
+                    </div>
+                    {% for order in list %}
+                    {% set subscription = order.subscription %}
+                    {% assign is_fee = false %}
+                    {% if subscription.product %}
+                      {% if subscription.product.shopify_details.product_type == 'Recycling Fee' %}
+                        {% assign is_fee = true %}
+                      {% endif %}
+                    {% endif %}
+                    {% set charge = order.charge %}
+                    <div data-type="{{subscription.status}}" class="shipment__product-row {% if is_fee %}fee{% endif %}">
+                      <p>
+                        {% if order.is_skipped %}<strike>{% endif %}
+                          {% if 'Flavors of the Month' in subscription.product_title %}
+                            hint&reg; Flavors of the Month Bundle Subscription
+                          {% else %}
+                            {{ subscription.product_title }}
+                          {% endif %}
+                        {% if order.is_skipped %}</strike>{% endif %}
+                      </p>
+                      <p>
+                        {% if order.is_skipped %}<strike>{% endif %}
+                          {{ subscription.quantity }}
+                        {% if order.is_skipped %}</strike>{% endif %}
+                      </p>
+                      <p></p>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+<script>
+  window.schedule = {{ schedule | json }};
+</script>
+{% endblock %}

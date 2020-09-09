@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+ 
+{% block content %} 
+  <h3 class="outlet-heading">edit address</h3>
+  <div class="outlet-content">
+    <form action="{{ address.id | address_url }}" method="post" id="ReChargeForm_address">
+      <input type="hidden" name="redirect_url" value="{{ address_list_url }}">
+      <div class="sub">
+        <div class="sub__info">
+          <fieldset class="sub__info-left">
+            {# FIRST NAME #}
+            <div  class="form-control">
+              <div class="styled-input">
+                <label for="first_name">First name: </label>
+                <input type="text" name="first_name" id="first_name" value="{{ address.first_name }}">
+              </div>
+            </div>
+            {# END FIRST NAME #}
+            
+            {# LAST NAME #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="last_name">Last name:</label>
+                <input type="text" name="last_name" id="last_name" value="{{ address.last_name }}">
+              </div>
+            </div>
+            {# END LAST NAME #}
+            
+            {# ADDRESS 1 #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="address1">Address 1:</label>
+                <input type="text" name="address1" id="address1" value="{{ address.address1 }}">
+              </div>
+            </div>
+            {# END ADDRESS 1 #}
+			
+            {# ADDRESS 2 #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="address2">Address 2:</label>
+                <input type="text" name="address2" id="address2" value="{{ address.address2 }}">
+              </div>
+            </div>
+            {# END ADDRESS 2 #}
+            
+            {# COMPANY #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="company">Company:</label>
+                <input type="text" name="company" id="company" value="{{ address.company }}">
+              </div>
+            </div>
+            {# END COMPANY #}
+            
+            {# CART NOTE #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="cart_note">Cart note:</label>
+                <input type="text" name="cart_note" id="cart_note" value="{{ address.cart_note }}">
+              </div>
+            </div>
+    		{# END CART NOTE #}
+          </fieldset>
+          <fieldset class="sub__info-right">
+            {# CITY #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="city">City:</label>
+                <input type="text" name="city" id="city" value="{{ address.city }}">
+              </div>
+            </div>
+            {# END CITY #}
+
+            {# COUNTRY #}
+            <div class="form-control">
+              <div class="styled-select">
+                <label for="country">Country:</label>
+                <select
+                	name="country"
+                    id="country"
+                    data-value="{{ address.country }}"
+                    onchange="ReCharge.Forms.updateProvinces(this);"
+                >
+                  {% for country in shipping_countries %}
+                    <option
+                    	value="{{ country.name }}"
+                        {% if address.country == country.name %}
+                          selected
+                        {% endif %}
+                     >
+                      {{ country.name }}
+                  	</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {# END COUNTRY #}
+			
+            {# ZIP #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="zip">Zip/postal code:</label>
+                <input type="text" name="zip" id="zip" value="{{ address.zip }}">
+              </div>
+            </div>
+            {# END ZIP #}
+            
+            {# STATE / PROVINCE #}
+            <div class="form-control">
+              <div class="styled-select styled-input">
+                <label for="province">State / Province: </label>
+                <input type="text" name="province" id="province" value="{{ address.province }}">
+                <select id="province_selector" onchange="ReCharge.Forms.updateProvinceInput(this);" style="display: none;"></select>
+              </div>
+            </div>
+            {# END STATE / PROVINCE #}
+            
+            {# PHONE #}
+            <div class="form-control">
+              <div class="styled-input">
+                <label for="phone">Phone:</label>
+                <input type="text" name="phone" id="phone" value="{{ address.phone }}">
+              </div>
+            </div>
+            {# END PHONE #}
+          </fieldset>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+	      <button type="submit" class="billing-btn" style="margin-bottom: 0.5rem;">Update address</button>
+          <p class="small-print">Note that the address will be updated for all active subscriptions currently shipping to this address.</p>
+        </div> 
+      </div>
+    </form>
+  </div>
+  <script>
+    window.Countries = {{ shipping_countries | json }};
+    ReCharge.Forms.buildCountries();
+    ReCharge.Forms.updateProvinces(document.querySelector('#country'));
+  </script>
+{% endblock %}

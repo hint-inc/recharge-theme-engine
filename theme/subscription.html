@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="outlet-heading mobile-off">edit subscription</h2>
+<div class="outlet-content">
+  {% set product = subscription.product %}
+  <div class="sub">
+    <div class="sub__image" data-props="{{subscription.properties}}">
+      {% if product and product.images and product.images['medium'] %}
+      	<img src="{{ product.images['medium'] }}">
+      {% else %}
+      	<img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" width="100">
+      {% endif %}
+    </div>
+    <div class="sub__info">
+      <div class="sub__info-left">
+        {# Product Title #}
+        <h3>
+          {{ subscription.product_title | replace('subscription', '') }}
+        </h3>
+        {# End Product Title #}
+
+        {# QUANTITY #}
+        {% set initial_quantity = subscription.quantity %}
+        <fieldset class="form-control">
+          <div class="styled-select">
+            <label>Quantity:</label>
+            <select
+              class="quantity-select"
+              name="quantity"
+              id="quantity"
+              onChange="openModal('quantity', {{ initial_quantity }} );"
+            >
+              <option value="1" {% if subscription.quantity == 1 %}selected{% endif %}>1</option>
+              <option value="2" {% if subscription.quantity == 2 %}selected{% endif %}>2</option>
+              <option value="3" {% if subscription.quantity == 3 %}selected{% endif %}>3</option>
+              <option value="4" {% if subscription.quantity == 4 %}selected{% endif %}>4</option>
+              <option value="5" {% if subscription.quantity == 5 %}selected{% endif %}>5</option>
+              <option value="6" {% if subscription.quantity == 6 %}selected{% endif %}>6</option>
+              <option value="7" {% if subscription.quantity == 7 %}selected{% endif %}>7</option>
+              <option value="8" {% if subscription.quantity == 8 %}selected{% endif %}>8</option>
+              <option value="9" {% if subscription.quantity == 9 %}selected{% endif %}>9</option>
+            </select>
+          </div>
+          <input type="hidden" name="quantity" id="quantity" value="{{ subscription.quantity }}">
+
+          {# QUANTITY MODAL #}
+          <div class="modal quantity-modal" style="display: none;">
+            <div class="modal__content">
+              <h4 class="modal-title">Would you like to make these changes?</h4>
+              <p class="modal-body">
+                Current quantity: {{ initial_quantity }}
+                <br />
+                New quantity: <span class="modal-updated-value">new</span>
+              </p>
+              <button
+                      class="modal-cta btn"
+                      data-url="{{ subscription | subscription_url }}"
+                      >
+                Confirm Changes
+              </button>
+            </div>
+            <button class="modal__overlay"></button>
+          </div>
+          {# END QUANTITY MODAL #}
+
+        </fieldset>
+        {# END QUANTITY #}
+		
+        <div class="form-control">
+          <p><label>Price:</label> ${{ subscription.price }}</p>
+        </div>
+      </div>
+      <div class="sub__info-right">
+		{# DELIVERY SCHEDULE #}
+        {% set initial_delivery_schedule = subscription.order_interval_frequency %}
+        <fieldset class="form-control">
+          <div class="styled-select">
+            <label for="charge_interval_frequency">Frequency:</label>
+            <select
+                    class="frequency-select"
+                    name="charge_interval_frequency"
+                    id="charge_interval_frequency"
+                    onchange="openModal('frequency', {{ initial_delivery_schedule }} );"
+                    >
+              {% for frequency in product.subscription_defaults.order_interval_frequency_options %}
+              <option value="{{ frequency }}" 
+                      {% if frequency == subscription.order_interval_frequency %}
+                      selected
+                      {% endif %}
+                      >
+                {{ frequency }} {{ subscription.order_interval_unit | capitalize + 's' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {# FREQ MODAL #}
+          <div class="modal frequency-modal" style="display: none;">
+            <div class="modal__content">
+              <h4 class="modal-title">Would you like to make these changes?</h4>
+              <p class="modal-body">
+                Current delivery schedule: Every {{ initial_delivery_schedule }} {{ subscription.order_interval_unit | capitalize + 's' }}
+                <br />
+                New delivery schedule: Every <span class="modal-updated-value">new</span> {{ subscription.order_interval_unit | capitalize + 's' }}
+              </p>
+              <button
+                      class="modal-cta btn"
+                      data-url="{{ subscription | subscription_url }}"
+                      >
+                Confirm Changes
+              </button>
+            </div>
+            <button class="modal__overlay"></button>
+          </div>
+          {# END FREQ MODAL #}
+
+        </fieldset>
+        {# END DELIVERY SCHEDULE #}
+
+        {# NEXT SHIPMENT #}
+        <script>
+          if (datefield.type != "date") { //if browser doesn't support input type="date", initialize date picker widget:
+            jQuery(function($) { //on document.ready
+              $('#date').datepicker({
+                minDate: +1,
+                dateFormat: 'yy-mm-dd'
+              });
+            });
+          }
+        </script>
+        <fieldset class="form-control">
+          <form
+          	method="post"
+            action="{{ subscription.id | subscription_set_next_charge_date_url }}"
+            id="ReChargeForm_date"
+          >
+            <label for="date"> Next shipment:</label>
+            <div class="styled-select">
+              <input
+              	type="date"
+                name="date"
+                id="date"
+                value="{{ subscription.next_charge_scheduled_at | date('%Y-%m-%d') }}"
+                onchange="$('.next-order-btn').css('display', 'inline-block');"
+              />
+            </div>
+            <button type="submit" class="next-order-btn inline-btn" style="display: none;">Update order date</button>
+          </form>
+        </fieldset>
+        {# END NEXT SHIPMENT #}
+        
+        {# ADDRESS #}
+        <fieldset class="form-control">
+          <label for="date">Ships to:</label>
+          <div class="styled-select-wrapper">
+            <div class="styled-select">
+              <div class="styled-select__content">
+                {{ subscription.address.address1 }} {{ subscription.address.address2 }}
+                {{ subscription.address.city }} {{ subscription.address.province }} {{ subscription.address.zip }}
+              </div>
+            </div>
+            <ul class="styled-select-dropdown">
+              <li class="styled-select-dropdown__item">
+                  <a href="{{ subscription.address.id | address_url }}">Update Address</a>
+              </li>
+            </ul>            
+          </div>
+        </fieldset>
+        {# END ADDRESS #}
+        
+        {# CARD INFO #}
+        <fieldset class="form-control">
+          {% set payment_source = payment_sources[0] %}
+          {% if payment_source.payment_type in ['credit', 'debit'] %}
+	        <label for="">Card info</label>
+          	<div class="styled-select-wrapper">
+              <div class="styled-select">
+                <div class="styled-select__content">
+                  {% if payment_source.status == 'failed' %}
+                    Card was removed or expired.
+                  {% else %}
+                    {% if not payment_source.card_brand %}
+                      Card details unavailable
+                    {% else %}
+                      {{ payment_source.card_brand | capitalize }} ending in {{ payment_source.card_last4 }}
+                    {% endif %}
+                  {% endif %}
+                </div>
+              </div>
+              <ul class="styled-select-dropdown">
+                <li class="styled-select-dropdown__item">
+                  <a href="{{ payment_source_list_url }}">Update Card</a>
+                </li>
+              </ul>
+          	</div>
+          {% elif payment_source.payment_type == 'paypal' %}
+            <h4>Paypal account</h4>
+            <p>Sign in to <a href="https://www.paypal.com/signin" target="_blank">PayPal</a>.</p>
+      	  {% elif payment_source.payment_type == 'apple_pay' %}
+            <h4>Linked Apple Pay</h4>
+            <p>Learn more about <a href="https://support.apple.com/en-us/HT205583" target="_blank">Apple Pay</a>.</p>
+          {% endif %}
+        </fieldset>
+        {# END CARD INFO #}
+
+      </div>
+    </div>
+  </div>
+  
+  {# ADDITIONAL OPTIONS #}
+  <div class="subs-links">
+    {% if subscription.status == 'ACTIVE' %}
+      {% if subscription.next_charge_scheduled_at %}
+   	    {% if subscription.order_interval_frequency == subscription.charge_interval_frequency %}
+          <a href="#" onclick="ReCharge.Subscription.skip({{ subscription.id }}); return false;">Skip shipment</a>
+        {% endif %}
+      {% else %}
+	    <span>Charge error, Skip not available</span>
+      {% endif %}
+    
+      {% if subscription.is_swappable %}
+        <a href="{{ subscription.id | subscription_swap_search_url }}">Swap product</a>
+      {% endif %}
+    
+      <a href="{{ subscription.id | subscription_cancel_url }}">Cancel subscription</a>
+    {% else %}
+      <a href="#" onclick="ReCharge.Subscription.activate({{ subscription.id }}); return false;">
+        Re-activate subscription
+      </a>
+    {% endif %}
+  </div>
+  {# END ADDITIONAL OPTIONS #}
+</div>
+{% endblock %}

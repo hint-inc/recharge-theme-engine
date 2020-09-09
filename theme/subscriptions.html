@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="outlet-heading mobile-off">active subscriptions</h2>
+<div class="outlet-content" data-customer-hash="{{ customer.hash }}">
+
+  {% for grouper, sorted_subscriptions in subscriptions | groupby('next_charge_scheduled_at') %}
+    {% if grouper | date('%B %-d, %Y') | length  %}
+      <h4>Next shipping date: {{grouper | date('%B %-d, %Y')}}</h4>
+    {% endif %}
+    {% for subscription in sorted_subscriptions if subscription.status == 'ACTIVE' %}
+      {% set next_shipment = subscription.next_charge_scheduled_at | date('%B %-d, %Y') %}
+      {% assign is_fee = false %}
+      {% if subscription.product %}
+        {# for testing #}
+        {% set fee_id ='' %}
+        {% for item in subscription.properties %}
+          {% if item.name == 'fee_id' %}
+            <span class="fee">{{item.value}}</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if subscription.product.shopify_details.product_type == 'Recycling Fee' %}
+          {% assign is_fee = true %}
+        {% endif %}
+      {% endif %}
+
+      <div class="sub {% if is_fee %}fee{% endif %}" >
+        {% if not(is_fee) %}
+          <div class="sub__image">
+            {% if subscription.product and subscription.product.images and subscription.product.images.small %}
+              <img src="{{ subscription.product.images['large'] }}"><br>
+            {% else %}
+              <img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" width="100"><br>
+            {% endif %}
+          </div>
+        {% endif %}
+        <div class="sub__info">
+          <div class="sub__info-left">
+            <div class="form-control">
+                <h3>
+                  {% if 'Flavors of the Month' in subscription.product.title%}
+                    hint&reg; Flavors of the Month Bundle Subscription
+                  {% else %}
+                    {{ subscription.product.title }}
+                  {% endif %}
+                </h3>
+            </div>
+            <fieldset class="form-control">
+              {% if is_fee %}
+                <p class="price">Quantity: {{ subscription.quantity }}</p>
+              {% else %}
+                <label>Quantity:</label>
+                <div class="styled-select">
+                  <select
+                    data-properties='{{ subscription.properties | json }}'
+                    class="quantity-select quantity-select-{{ subscription.id }}"
+                    name="quantity"
+                    id="quantity"
+                    onchange="handleUpdates({
+                      id: {{ subscription.id }},
+                      input: 'quantity',
+                      initialValue: {{ subscription.quantity }}
+                    });"
+                  >
+                    <option value="1" {% if subscription.quantity == 1 %}selected{% endif %}>1</option>
+                    <option value="2" {% if subscription.quantity == 2 %}selected{% endif %}>2</option>
+                    <option value="3" {% if subscription.quantity == 3 %}selected{% endif %}>3</option>
+                    <option value="4" {% if subscription.quantity == 4 %}selected{% endif %}>4</option>
+                    <option value="5" {% if subscription.quantity == 5 %}selected{% endif %}>5</option>
+                    <option value="6" {% if subscription.quantity == 6 %}selected{% endif %}>6</option>
+                    <option value="7" {% if subscription.quantity == 7 %}selected{% endif %}>7</option>
+                    <option value="8" {% if subscription.quantity == 8 %}selected{% endif %}>8</option>
+                    <option value="9" {% if subscription.quantity == 9 %}selected{% endif %}>9</option>
+                    <option value="10" {% if subscription.quantity == 10 %}selected{% endif %}>10</option>
+                    <option value="11" {% if subscription.quantity == 11 %}selected{% endif %}>11</option>
+                    <option value="12" {% if subscription.quantity == 12 %}selected{% endif %}>12</option>
+                  </select>
+                </div>
+
+                <div class="modal quantity-modal quantity-modal-{{ subscription.id }}" style="display: none;">
+                  <div class="modal__content">
+                    <h4 class="modal-title">Would you like to make these changes?</h4>
+                    <p class="modal-body">
+                      Current quantity: {{ subscription.quantity }}
+                      <br />
+                      New quantity: <span class="modal-updated-value">new</span>
+                    </p>
+                    <button
+                      class="modal-cta btn"
+                      data-url="{{ subscription | subscription_url }}"
+                    >
+                      Confirm Changes
+                    </button>
+                  </div>
+                  <button class="modal__overlay"></button>
+                </div>
+              {% endif %}
+            </fieldset>
+            <p class="price">Price: {{ subscription.price |times(subscription.quantity) | money }}</p>
+            {% if not(is_fee) %}
+            <ul class="action-list">
+              <li> <a class="btn" href="{{ subscription.id | subscription_swap_search_url }}">Swap Flavor</a></li>
+              <li>
+                <a href="{{ subscription | subscription_cancel_url }}">Cancel</a>
+              </li>
+            </ul>
+              {% endif %}
+          </div>
+          <div class="sub__info-right">
+            {% set initial_delivery_schedule = subscription.order_interval_frequency %}
+            <fieldset class="form-control">
+              {% if is_fee %}
+                <p class="price">Frequency: Every {{ subscription.order_interval_frequency }} {{ subscription.order_interval_unit }}s</p>
+              {% else %}
+              <label for="charge_interval_frequency">Frequency:</label>
+                <div class="styled-select">
+                  <select
+                    data-freq="{{subscription.order_interval_frequency}}"
+                    class="frequency-select frequency-select-{{ subscription.id }} js-frequency-value"
+                    name="charge_interval_frequency"
+                    id="charge_interval_frequency"
+                    data-properties='{{ subscription.properties | json }}'
+                    onchange="handleUpdates({
+                      id: {{ subscription.id }},
+                      input: 'frequency',
+                      initialValue: {{ initial_delivery_schedule }}
+                    });"
+                  >
+                    <option value="14" {% if subscription.order_interval_frequency == '14' %}selected{% endif %}>Every 14 days</option>
+                    <option value="30" {% if subscription.order_interval_frequency == '30' %}selected{% endif %}>Every 30 days</option>
+                                                <option value="60" {% if subscription.order_interval_frequency == '60' %}selected{% endif %}>Every 60 days</option>
+                  </select>
+                </div>
+                <div class="modal frequency-modal frequency-modal-{{ subscription.id }}" style="display: none;">
+                  <div class="modal__content">
+                    <h4 class="modal-title">Would you like to make these changes?</h4>
+                    <p class="modal-body">
+                      Current delivery schedule: Every {{ initial_delivery_schedule }} {{ subscription.order_interval_unit | capitalize + 's' }}
+                      <br />
+                      New delivery schedule: Every <span class="modal-updated-value">new</span> {{ subscription.order_interval_unit | capitalize + 's' }}
+                    </p>
+                    <button
+                      class="modal-cta btn"
+                      data-url="{{ subscription | subscription_url }}"
+                    >
+                      Confirm Changes
+                    </button>
+                  </div>
+                  <button class="modal__overlay"></button>
+                </div>
+              {% endif %}
+            </fieldset>
+            {% set initial_next_shipment = subscription.next_charge_scheduled_at %}
+            <script>
+              if (datefield.type != "date") { //if browser doesn't support input type="date", initialize date picker widget:
+                jQuery(function($) { //on document.ready
+                      $('#next-shipment-{{ subscription.id }}').removeAttr('onchange');
+                      $('#next-shipment-{{ subscription.id }}').datepicker({
+                        minDate: +1,
+                        dateFormat: 'yy-mm-dd',
+                        onClose: function(dateText, inst) {
+                          if (dateText.length) {
+                            handleUpdates({
+                              id: {{ subscription.id }},
+                              input: 'next-shipment',
+                              initialValue: `{{ initial_next_shipment | date('%Y-%m-%d') }}`
+                            })
+                          } else {
+                            console.log('no date selected');
+                          } 
+                        }
+                      });
+                  });
+              }
+            </script>
+            <fieldset class="form-control">
+              {% if is_fee %}
+              <p class="price">Next shipment: {{ subscription.next_charge_scheduled_at | date('%B %-d, %Y') }}</p>
+              {% else %}
+                <label for="next-shipment">Next shipment:</label>
+                <div class="styled-select">
+                  <input
+                    type="date"
+                    value="{{ subscription.next_charge_scheduled_at | date('%Y-%m-%d') }}"
+                    data-properties='{{ subscription.properties | json }}'
+                    class="next-shipment-select next-shipment-select-{{ subscription.id }}"
+                    min=""
+                    name="next-shipment"
+                    id="next-shipment-{{ subscription.id }}"
+                    onchange="handleUpdates({
+                      id: {{ subscription.id }},
+                      input: 'next-shipment',
+                      initialValue: `{{ initial_next_shipment | date('%Y-%m-%d') }}`
+                    });"
+                  />
+                </div>
+
+                <div class="modal next-shipment-modal next-shipment-modal-{{ subscription.id }}" style="display: none;">
+                  <div class="modal__content">
+                    <h4 class="modal-title">Would you like to make these changes?</h4>
+                    <p class="modal-body">
+                      Current next shipment: {{ initial_next_shipment | date('%B %-d, %Y') }}
+                      <br />
+                      Updated next shipment: <span class="modal-updated-value">new</span>
+                    </p>
+                    <button
+                      class="modal-cta btn"
+                      data-url="{{ subscription | subscription_url }}"
+                    >
+                      Confirm Changes
+                    </button>
+                  </div>
+                  <button class="modal__overlay"></button>
+                </div>
+
+              {% endif %}
+            </fieldset>
+            <fieldset class="form-control">
+              {% set disbale_shipping = true %}
+              {% if is_fee or disbale_shipping %}
+              {% for address in addresses %}
+              {% if address.id == subscription.address_id %}
+              <p class="price">Ships to: {{ address.address1 }} {{ address.address2 }}
+                {{ address.city }} {{ address.province }}
+                {{ address.zip }}</p>
+              {% endif %}
+              {% endfor %}
+              {% else %}
+
+              <label for="address-select">Ships to:</label>
+                <div class="styled-select">
+                  <select data-freq="{{subscription.order_interval_frequency}}"
+                          class="address-select address_change-select-{{ subscription.id }}"
+                          name="address-select"
+                          id="address-select"
+                          data-properties='{{ subscription.properties | json }}'
+                          onchange="handleUpdates({
+                                    id: {{ subscription.id }},
+                                    input: 'address_change',
+                                    selection: this,
+                                    });"
+                          >
+                    {% for address in addresses %}
+                    {% set offset = loop.index0 | minus(1) %}
+                    {% if address.address1 != addresses[offset].address1 %}
+                    <option value="{{address.id }}" {% if address.id == subscription.address_id %}selected{% endif %}>        {{ address.address1 }} {{ address.address2 }}
+                      {{ address.city }} {{ address.province }}
+                      {{ address.zip }} </option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+              <div class="modal address_change-modal address_change-modal-{{ subscription.id }}" style="display: none;">
+                <div class="modal__content">
+                  <h4 class="modal-title">Would you like to make these changes?</h4>
+                  <p class="modal-body">
+                    Current address:   {% for address in addresses %} {% if address.id == subscription.address_id %}   {{ address.address1 }} {{ address.address2 }} {{ address.city }} {{ address.province }} {{ address.zip }} {% endif %} {% endfor %}
+                    <br />
+                    New address:  <span class="js-new-address"></span>
+                  </p>
+                  <button
+                          class="modal-cta btn"
+                          data-url="{{ subscription | subscription_url }}"
+                          >
+                    Confirm Changes
+                  </button>
+                </div>
+                <button class="modal__overlay"></button>
+              </div>
+              {% endif %}
+            </fieldset>
+          </div>
+        </div>
+      </div>
+    {% endfor %} <!-- /END subscriptions loop -->
+
+    <div class="account_data--details js-empty-state" style="padding-top: 0; display: none;">
+      <div>
+        <p style="text-align: center;">
+          You do not have any active subscriptions. <br> Shop subscriptions now and save up to 20% on every order.
+        </p>
+        <a style="display: block; margin: 1rem auto 0; max-width: 300px" class="btn shop-subs" href="/collections/subscriptions">
+          shop subscriptions
+        </a>
+      </div>
+    </div>
+  {% endfor %} <!-- /END Date loop -->
+
+  <div class="subs-links">
+    <a href="#show" class="js-toggle_subscriptions">Show Inactive Subscriptions</a>
+    <div class="inactive-subscriptions" style="display:none">
+      {% if subscriptions | selectattr("status", "equalto", "CANCELLED") | list | length  %}
+        {% for subscription in subscriptions | selectattr("status", "equalto", "CANCELLED") | list %}
+          {% include '_sub_card.html' %}
+        {% endfor %}
+      {% else %}
+        <p>You have no canceled orders</p>
+      {% endif %}
+    </div>
+    <a href="{{ product_search_url }}" >Add a subscription product</a>
+    <a href="{{ address_list_url }}" >Manage Addresses</a>
+  </div>
+
+  {% set addressID = subscriptions  | sort(attribute="next_charge_scheduled_at") | list | first %}
+  {% for address in addresses %}
+    {% if address.id == addressID.address_id %}
+      <div class="discount-container">
+        {% if address.discount_id %}
+          <p>
+            Applied discount: {{ address.discount.code }}
+            <a href="#" onclick="ReCharge.Discount.remove({{ address.id }}, {{ address.discount_id }});return false;" class="promo-btn">
+              Remove discount
+            </a>
+          </p>
+        {% else %}
+          <form method="post" action="{{ address.id | discount_apply_url }}" id="ReChargeForm_applyDiscount_{{ address.id }}">
+            <input type="hidden" name="redirect_url" value="{{ subscription_list_url }}">
+            <fieldset>
+              <div class="styled-input">
+              <label for="discount_code"> apply promo code to next shipment:</label>
+              <input type="text" name="discount_code" id="discount_code" placeholder="Enter discount code">
+              <button type="submit" class="promo-btn">apply</button>
+              </div>
+            </fieldset>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endfor  %}
+</div>
+<script>
+  window.addresses = {{ addresses | json }};
+  window.subscritions = {{ subscriptions | json }};
+
+  const activeSubs = window.subscritions.filter(function(sub) {
+    return sub.status === 'ACTIVE';
+  });
+  if (!activeSubs.length) {
+    $('.js-empty-state').show();
+  }
+</script>
+
+<script>
+$(function(){
+  //set min and max date for subscriptions
+  var dtToday = new Date();
+  var month =  dtToday.getMonth();
+  var day = dtToday.getDate();
+  var year = dtToday.getFullYear();
+  if(month <= 8 ){
+      month = month + 3;
+  } else {
+    month = month - 10  ;
+    year = 1 + year;
+  }
+
+  if(month < 10 ){
+    month = '0' + month.toString();
+  }
+  if(day < 10){
+    day = '0' + day.toString();
+  }
+  var maxDate = year + '-' + month + '-' + day;
+
+  var today = new Date();
+  var tomorrow = new Date();
+  tomorrow.setDate(today.getDate()+1);
+  var dd = tomorrow.getDate();
+  var mm = tomorrow.getMonth()+1; //January is 0!
+  var yyyy = tomorrow.getFullYear();
+  if(dd<10){
+    dd='0'+dd
+  }
+  if(mm<10){
+    mm='0'+mm
+  }
+  today = yyyy+'-'+mm+'-'+dd;
+  $('[name="next-shipment"]').attr({"min": today, 'max':maxDate});
+  $('[name="next-shipment"]').attr({"min": today, 'max':maxDate});
+
+  //set toggle for inactive subscriptions
+  $('.js-toggle_subscriptions').on('click',function(){
+    $(this).toggleClass('active');
+    if($(this).hasClass('active')){
+      $(this).text('Hide Inactive Subscriptions')
+    }else{
+      $(this).text('Show Inactive Subscriptions')
+    }
+    $('.inactive-subscriptions').slideToggle();
+  })
+});
+</script>
+<script>{% include '_frequency-pull-through.js' %}</script>
+{% endblock %}

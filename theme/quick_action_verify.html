@@ -1,0 +1,111 @@
+<style>{% include '_styles.css' %}</style>
+
+<div style="width: 500px; margin: auto; text-align: center;">
+  <div class="grid grid--uniform grid--view-items">
+    <div id="greeting" class="grid-view-item">
+      {{ quick_actions.greeting }}
+    </div>
+
+    {% if quick_actions.images %}
+      <div id="images" class="grid-view-item">
+        {% for image in quick_actions.images %}
+          <img src="{{ image }}">
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div id="form" class="grid-view-item">
+      Where should we send a verification code?
+      <br>
+      <br>
+      {% for info in quick_actions.contact_info %}
+        <label style="display: block;">
+          <input type="radio" value="{{loop.index0}}" type="radio" name="contact_info_index">&nbsp;{{ info }}
+        </label>
+      {% endfor %}
+    </div>
+
+    <div class="grid-view-item">
+      <button id="button" class="btn" onclick="sendVerificationCode()">Submit</button>
+      <br>
+      <br>
+
+      <div id="refresh" style="visibility: hidden;">
+        <a href="#" onclick="history.go(0)">Not receiving the code? Try again.</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>{% include '_scripts.js' %}</script>
+
+<script>
+'use strict';
+
+const actionUrl = '{{ quick_actions.action_url }}';
+let contactInfoIndex;
+
+// STEP 2
+async function sendVerificationCode() {
+  // get selected contact info
+  const checked = document.querySelector('input[name="contact_info_index"]:checked');
+
+  if (checked === null) {
+    ReCharge.Toast.addToast('error', 'Contact method is required');
+    return;
+  }
+
+  contactInfoIndex = parseInt(checked.value);
+  const response = await fetch("{{ quick_actions_send_verification_code_url }}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      'contact_info_index': contactInfoIndex
+    })
+  });
+
+  if (response.ok) {
+    // display verification code input
+    document.getElementById('form').innerHTML = `
+    <label>
+      <input autocomplete="off" name="verification_code" required maxlength="6" placeholder="6-digit code">
+    </label>`;
+    const input = document.getElementsByName('verification_code')[0];
+    input.focus();
+    document.getElementById('button').onclick = checkVerficationCode;
+    // show "Not receiving the code?" link
+    document.getElementById('refresh').style.visibility = 'visible';
+  } else {
+    const error = await response.json();
+    ReCharge.Toast.addToast('error', error['errors'][0]);
+  }
+}
+
+// STEP 3
+async function checkVerficationCode() {
+  // get verification code
+  const verificationCode = document.getElementsByName('verification_code')[0].value;
+  const response = await fetch("{{ quick_actions_check_verification_code_url }}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      'verification_code': verificationCode,
+      'contact_info_index': contactInfoIndex
+    })
+  });
+
+  // execute action if verification checks out, else error alert
+  if (response.ok) {
+    const data = await response.json();
+    window.location.replace(actionUrl + '&token=' + data['token']);
+  } else {
+    const error = await response.json();
+    ReCharge.Toast.addToast('error', error['errors'][0]);
+  }
+}
+
+</script>

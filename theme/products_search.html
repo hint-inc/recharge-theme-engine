@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2 class="outlet-heading">
+    {% if subscription %}
+		swap product
+    {% else %}
+		add a subscription product
+    {% endif %}
+  </h2>
+
+  <div class="outlet-content">
+    {% if subscription %}
+        <h4>Current product:</h4>
+
+        <div class="grid grid--uniform grid--view-items">
+          <div class="grid__item grid__item--collections medium-up--one-quarter">
+            <div class="grid-view-item">
+              <div class="grid-view-item__image-wrapper">
+                {% if 'product' in subscription and subscription.product.shopify_details.image %}
+                  <img src="{{ subscription.product.shopify_details.image | img_url }}" class="grid-view-item__image">
+                {% else %}
+                  <img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" class="grid-view-item__image">
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="grid__item grid__item--collections medium-up--three-quarters">
+            <div class="grid-view-item">
+              <h5>
+                {{ subscription.product_title }}
+                {% if subscription.variant_title %} ({{ subscription.variant_title }}) {% endif %}
+              </h5>
+              {{ subscription.quantity }} every {{ subscription.order_interval_frequency }}
+              {% if subscription.order_interval_frequency > 1 %}
+                {{ subscription.order_interval_unit | title + 's' }}<br>
+              {% else %}
+                {{ subscription.order_interval_unit | title }}<br>
+              {% endif %}
+            </div>
+            ${{ subscription.price }}
+          </div>
+        </div>
+
+        <hr>
+
+        <h4>New product:</h4>
+      {% endif %}
+
+      {% include '_errors.html' %}
+
+      {% if subscription %}
+        {% set search_form_action_url = subscription.id | subscription_swap_search_url %}
+      {% else %}
+        {% set search_form_action_url = product_search_url %}
+      {% endif %}
+ 
+      <form action="{{ search_form_action_url }}" method="post" id="rc_product_search" _lpchecked="1"  >
+        <div class="form-control">
+          <div class="styled-input">
+        <input type="search" id="product_search" name="e" placeholder="Enter product name" value="{% if form.q.data %}{{ form.q.data }}{% endif %}" class="isp_ignore">
+        </div> 
+        <button type="submit" id="trigger_search" class="search-btn" >Search</button>
+        </div>
+         <hr>
+      </form> 
+
+      {% if not products %}
+        {% if form.q.data %}
+          <p>No products found</p>
+        {% else %}
+          <p>Enter a search term and press search</p>
+        {% endif %}
+      {% else %}
+        <div class="grid grid--uniform grid--view-items flex-grid">
+          {% for product in products | rejectattr("shopify_details.product_type", "equalto", "Recycling Fee") %}
+          {% if 'remove-klevu' in product.shopify_details.tags %}
+          {% set hide_product = 'hide-product' %}
+          {% else %}
+          {% set hide_product = '' %}
+          {% endif %}
+          
+          {% if 'sold out' in product.shopify_details.tags %}
+          {% set hide_product = 'hide-product' %} 
+          {% endif %}
+     
+            {% if subscription %}
+              {% set product_url = subscription.id | subscription_swap_url(shopify_product_id = product.shopify_details.shopify_id | string) %}
+            {% else %}
+              {% set product_url = product.shopify_details.shopify_id | subscription_new_url %}
+            {% endif %}
+
+            {% set product_title = product.title if product.title else product.shopify_details.title | replace('Auto renew', '') | escape %}
+            {% set product_price = product.shopify_details.variants[0].price %}
+
+            <div class="grid__item grid__item--collections medium-up--one-quarter small--one-half  {{hide_product}}">
+              <div class="grid-view-item">
+                <a href="{{ product_url }}" title="{{ product_title }}" id="product_{{ product.shopify_details.shopify_id }}" class="grid-view-item__link grid-view-item__image-container">
+                  <div class="grid-view-item__image-wrapper">
+                  {% if product.shopify_details.image %}
+                    <img src="{{ product.shopify_details.image | img_url('large')}}" class="grid-view-item__image">
+                  {% else %}
+                    <img  src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" class="grid-view-item__image">
+                  {% endif %}
+                  </div>
+                  <div class="grid-view-item__title">
+                    {% if 'Flavors of the Month' in product_title %}
+                      hint&reg; Flavors of the Month Bundle Subscription
+                    {% else %}
+                      {{ product_title }}
+                    {% endif %}
+                  </div>
+                </a>
+                <div class="grid-view-item__price">
+                  {% if product.discount_amount %}
+                    {% if product.discount_type == 'percentage' %}
+                      {% set product_price = product_price | float %}
+                      {% set calculate_discounted = product_price * (1 - product.discount_amount / 100) %}
+                      {{ '$%0.2f' % calculate_discounted }}
+                    {% else %}
+                      ${{ product_price - product.discount_amount }}
+                    {% endif %}
+                  {% else %}
+                    ${{ product_price }}
+                  {% endif %}
+                </div>
+              <a  href="{{ product_url }}" title="{{ product_title }}" id="product_{{ product.shopify_details.shopify_id }}" class="billing-btn" style="max-width: 100%;">add product</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% set limit = 'limit' | url_param | int or 16 %}
+        {% if products_count > limit %}
+          {% set current_page = 'page' | url_param | int or 1 %}
+          {% set total_pages = products_count // limit %}
+          {% set remainder = products_count % limit %}
+          {% set subcription_swap_param = '&swap_subscription_id={}'.format(subscription.id) if subscription else '' %}
+          {% if remainder != 0 %}
+            {% set total_pages = total_pages + 1 %}
+          {% endif %}
+          <div class="grid">
+            <div class="grid__item medium-up--one-full text-center">
+              {% if current_page != 1 %}
+                <a href="?page={{ current_page - 1 }}{{ subcription_swap_param }}{% if 'preview_theme' | url_param %}&preview_theme={{ 'preview_theme' | url_param }}{% endif %}">Prev</a>
+              {% endif %}
+
+              {% for page in range(1, total_pages + 1) %}
+                {% if current_page == page %}
+                  <span>{{ page }}</span>
+                {% else %}
+                  <a href="?page={{ page }}{{ subcription_swap_param }}{% if 'preview_theme' | url_param %}&preview_theme={{ 'preview_theme' | url_param }}{% endif %}">{{ page }}</a>
+                {% endif %}
+              {% endfor %}
+
+              {% if current_page != total_pages %}
+                <a href="?page={{ current_page + 1 }}{{ subcription_swap_param }}{% if 'preview_theme' | url_param %}&preview_theme={{ 'preview_theme' | url_param }}{% endif %}">Next</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+      <script>
+        function updateURLs(additionalParams) {
+          document.querySelectorAll('a[href*="?shopify_product_id"]').forEach(function(el) {
+              var splitHref = el.getAttribute('href').split('?');
+              var newHref = splitHref[0] + additionalParams + '&' + splitHref[1];
+
+              el.setAttribute('href', newHref);
+            });
+        }
+
+        if (window.location.search) {
+          updateURLs(window.location.search);
+        }
+      </script>
+  </div>
+{% endblock %}

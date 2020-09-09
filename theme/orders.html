@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h3>Order history</h3>
+  <div class="table-wrap">
+    <div class="table-wrapper">
+      <table class="full">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Order #</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders | sort(attribute='shopify_order_number', reverse=true) %}
+            <tr>
+              <td>
+                {{ order.processed_at | date('%b %-d, %Y') }}
+              </td>
+              <td>
+                <a href="{{ order.id | order_url }}">{{ order.shopify_order_number }}</a>
+              </td>
+              <td class="text-right">
+                ${{ order.total_price }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

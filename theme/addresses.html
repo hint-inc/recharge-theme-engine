@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+ <h2 class="outlet-heading mobile-off">Addresses</h2>
+    <div class="outlet-content">
+  {% if not addresses %}
+    <p>No addresses found</p>
+  {% else %}
+    {% for address in addresses %}
+      <div class="sub">
+        <div class="sub__info" style="flex-grow: 1;">
+          <div class="sub__info-left" style="flex-grow: 0;">
+            <address>
+              <p>
+                <strong>{{ address.first_name }} {{ address.last_name }}</strong><br>
+                {% if address.company %}{{ address.company }}<br>{% endif %}
+                {{ address.address1 }} {{ address.address2 }}<br>
+                {{ address.zip }} {{ address.city }} {{ address.province }}<br>
+                {{ address.country }}<br>
+                {{ address.phone }}
+              </p>
+              <br />
+              <a href="{{ address.id | address_url }}" class="btn">Edit address</a>
+            </address>
+          </div>
+          <div class="sub__info-right">
+			<div class="shipment__products subs-list-{{ address.id }}">
+              <div class="shipment__product-row shipment__product-row--header" style="grid-template-columns: 10fr 5fr;">
+                <p>products</p>
+                <p>qty</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br>
+<script>
+function generateSubsList() {
+  const addressId = {{ address.id }};
+  const customerId = "{{ customer.hash }}";
+  {% include "_addresses.js" %}
+}
+generateSubsList();
+</script>
+    {% endfor %}
+  {% endif %}
+
+  <p>
+    <a href="{{ address_new_url }}" class="btn btn--secondary">Add address</a>
+  </p>
+</div>
+
+    <style>
+        #customer-card-form {
+            width: 100%;
+            height: 450px;
+        }
+    </style>
+
+{# 
+    <h2 class="h4">Card on file</h2>
+    {{ payment_source_form_url }}
+    <a href="{{ payment_source_list_url }}">Return to billing information</a>
+  #}
+{% endblock %}

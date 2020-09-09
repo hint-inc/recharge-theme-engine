@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block content %}
+ <h3 class="outlet-heading">Swap product</h3>
+<div class="outlet-content">
+    <h3>Current product:</h3>
+	<div class="sub">
+      <div class="sub__image">
+      	{% if 'product' in subscription and subscription.product.shopify_details.image %}
+        	<img src="{{ subscription.product.shopify_details.image | img_url('300x300') }}" class="grid-view-item__image">
+        {% else %}
+        	<img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" class="grid-view-item__image">
+        {% endif %}
+      </div>
+      <div class="sub__info">
+        <div class="sub__info-left">
+          <div class="form-control">
+            <h3>
+              {% if 'Flavors of the Month' in subscription.product_title %}
+                hint&reg; Flavors of the Month Bundle Subscription
+              {% else %}
+                {{ subscription.product_title }}
+              {% endif %}
+            </h3>
+          </div> 
+          <fieldset class="form-control">
+            <p class="price">Quantity: {{ subscription.quantity }}</p>
+          </fieldset>
+          <p class="price">Price: ${{ subscription.price }}</p>
+        </div>
+        <div class="sub__info-right">
+          <fieldset class="form-control">
+            <p class="price">Frequency: Every {{ subscription.order_interval_frequency }} {{ subscription.order_interval_unit }}s</p>
+          </fieldset>
+          <fieldset class="form-control">
+            <p class="price">Next shipment: {{ subscription.next_charge_scheduled_at | date('%m-%d-%Y') }}</p>
+          </fieldset>
+          <!--
+          <fieldset class="form-control">
+            <p class="price">Ships to:</p>
+          </fieldset> -->
+        </div>
+      </div>
+    </div>
+   
+    <h3>Select product to swap:</h3>
+
+    {% set search_form_action_url = subscription.id | subscription_swap_search_url %}
+    {% if 'preview_theme' | url_param %}
+        {% set search_form_action_url = search_form_action_url + '?preview_theme=' + 'preview_theme' | url_param %}
+    {% endif %}
+
+  <form action="{{ search_form_action_url }}" method="post" id="rc_product_search" _lpchecked="1">
+    <div class="form-control">
+      <div class="styled-input">
+        <input type="search" id="product_search" name="e" placeholder="Enter product name" value="{% if form.q %}{{ form.q }}{% endif %}" class="isp_ignore">
+      </div>
+      <input type="hidden" id="product_search_page" name="page" value="{{ 'page' | url_param | int or 1 }}" class="isp_ignore">
+      <input type="hidden" id="product_search_limit" name="limit" value="{{ 'limit' | url_param | int or 16 }}" class="isp_ignore">
+      <button type="submit" id="trigger_search" class="search-btn">Search</button>
+    </div>
+  </form>
+
+    
+    {% if not products %}
+        {% if form.q %}
+            <p>No products found</p>
+        {% else %}
+            <p>Enter a search term and press search</p>
+        {% endif %}
+    {% else %}
+        <div class="grid grid--uniform grid--view-items" style="display: flex; flex-wrap: wrap; align-items: flex-end;">
+            {% for product in products | rejectattr("shopify_details.product_type", "equalto", "Recycling Fee")%}
+          
+          
+          {% if 'remove-klevu' in product.shopify_details.tags %}
+          {% set hide_product = 'hide-product' %}
+          {% else %}
+          {% set hide_product = '' %}
+          {% endif %}
+          
+          {% if 'sold out' in product.shopify_details.tags %}
+          {% set hide_product = 'hide-product' %} 
+          {% endif %}
+     
+                {% set product_url = subscription.id | subscription_swap_url(shopify_product_id = product.shopify_details.shopify_id | string) %}
+                {% set product_title = product.title if product.title else product.shopify_details.title | replace('Auto renew', '') | escape %}
+                {% set product_price = product.shopify_details.variants[0].price %}
+			 
+          <div class="grid__item grid__item--collections medium-up--one-quarter small--one-half {{hide_product}}">
+            <div class="grid-view-item">
+              <div href="{{ product_url }}" title="{{ product_title }}" id="product_{{ product.shopify_details.shopify_id }}" class="grid-view-item__link grid-view-item__image-container">
+                <div class="grid-view-item__image-wrapper">
+                  {% if product.shopify_details.image %}
+                    <img src="{{ product.shopify_details.image | img_url('large')}}" class="grid-view-item__image">
+                  {% else %}
+                    <img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" class="grid-view-item__image">
+                  {% endif %}
+                </div>
+                <div class="grid-view-item__title">
+                  {% if 'Flavors of the Month' in product_title %}
+                    hint&reg; Flavors of the Month Bundle Subscription
+                  {% else %}
+                    {{ product_title }}
+                  {% endif %}
+                </div>
+              </div>
+              <div class="grid-view-item__price">
+                {% if product.discount_amount %}
+                  {% if product.discount_type == 'percentage' %}
+                    {% set product_price = product_price | float %}
+                    {% set calculate_discounted = product_price * (1 - product.discount_amount / 100) %}
+                    {{ '$%0.2f' % calculate_discounted }}
+                  {% else %}
+                    ${{ product_price - product.discount_amount }}
+                  {% endif %}
+                {% else %}
+                  ${{ product_price }}
+                {% endif %}
+              </div>
+              
+              {% set feeTags = [] %}
+              {% for i in product.shopify_details.tags.split(', ')  %} 
+              {% if 'fee' in i %}
+               {% if feeTags.append(i) %}{% endif %} 
+              {% endif %}
+              {% endfor %} 
+              {% set tags = feeTags|join(',') %}
+              <a
+                  href="{{ product_url }}"
+                  class="billing-btn swap-select swap-select-{{ product.id }}"
+                   
+                  style="max-width: 100%;"
+              >Swap</a>
+              <div class="modal swap-modal swap-modal-{{product.id }}" style="display: none;">
+                <div class="modal__content">
+                  <h4 class="modal-title">Would you like to swap this product?</h4>
+                  <div class="modal-body" style="position: relative;">
+                    <div class="sub sub--swap">
+                      <div class="sub__image">
+                        {% if subscription.product and subscription.product.images and subscription.product.images.small %}
+                            <img src="{{ subscription.product.images['large'] }}"><br>
+                        {% else %}
+                            <img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" width="100"><br>
+                        {% endif %}
+                      </div>
+                      <div class="sub__info">
+                        <div class="sub__info-left">
+                          <div class="form-control"> 
+                            <h3>{{product_title}}</h3>
+                          </div>
+                          <fieldset class="form-control">
+                             <p class="price">Quantity: {{ subscription.quantity }}</p>
+                          </fieldset> 
+                          <p class="price">Price: ${{ subscription.price |times(subscription.quantity)}}</p>
+                          <fieldset class="form-control">
+                            <p class="price">Frequency: Every {{ subscription.order_interval_frequency }} {{ subscription.order_interval_unit }}s</p>
+                          </fieldset>
+                         {# <fieldset class="form-control">
+                           <p class="price">Next shipment: {{ subscription.next_charge_scheduled_at | date('%m-%d-%Y') }}</p>
+                          </fieldset> #}
+                          {# <fieldset class="form-control">
+                            <p class="price">Ships to: 
+                             {{ subscription.address.address1 }}
+                             {{ subscription.address.address2 }}
+                             {{ subscription.address.city }}
+                             {{ subscription.address.province }}
+                             {{ subscription.address.zip }}
+                            </p>
+                          </fieldset> #}
+                        </div>
+                      </div> 
+                    </div>
+                    <div class="sub-swap-divider">
+                      <p>for</p>
+                    </div>
+                    <div class="sub sub--swap">
+                      <div class="sub__image">
+                        {% if product and product.images and product.images.small %}
+                            <img src="{{ product.images['large'] }}"><br>
+                        {% else %}
+                            <img src="//rechargestatic-bootstrapheroes.netdna-ssl.com/static/images/no-image.png" width="100"><br>
+                        {% endif %}
+                      </div>
+                      <div class="sub__info">
+                        <div class="sub__info-left">
+                          <div class="form-control"> 
+                            <h3>{{product.title}}</h3>
+                          </div>
+                          <fieldset class="form-control">
+                             <p class="price">Quantity: {{ subscription.quantity }}</p> 
+                          </fieldset> 
+                          {% if product.discount_amount %}<p class="price">Price: 
+                            {% if product.discount_type == 'percentage' %}
+                            {% set product_price = product_price | float %}
+                            {% set calculate_discounted = product_price * (1 - product.discount_amount / 100) %}
+                            {{ '$%0.2f' % calculate_discounted }}
+                            {% else %} 
+                            ${{ product_price - product.discount_amount|times(subscription.quantity) }}
+                            {% endif %}
+                          </p>
+                          {% else %}
+                          <p class="price">Price: ${{ product_price |times(subscription.quantity)}}</p>
+                          {% endif %}
+    
+                          <fieldset class="form-control">
+                            <p class="price">Frequency: Every {{ subscription.order_interval_frequency }} {{ subscription.order_interval_unit }}s</p>
+                          </fieldset>
+                         {# <fieldset class="form-control">
+                           <p class="price">Next shipment: {{ subscription.next_charge_scheduled_at | date('%m-%d-%Y') }}</p>
+                          </fieldset> #}
+                          {# <fieldset class="form-control">
+                            <p class="price">Ships to: 
+                             {{ subscription.address.address1 }}
+                             {{ subscription.address.address2 }}
+                             {{ subscription.address.city }}
+                             {{ subscription.address.province }}
+                             {{ subscription.address.zip }}
+                            </p>
+                          </fieldset> #}
+                        </div>
+                      </div> 
+                    </div>
+                  </div>
+                  <button
+                    class="modal-cta btn"
+                    data-url=""
+                  >
+                    Confirm Changes
+                  </button>
+                </div>
+                <button class="modal__overlay"></button>
+              </div>
+            </div>
+          </div>
+         
+            {% endfor %}
+        </div>
+
+        {% set pagination_params = '&swap_subscription_id={}'.format(subscription.id) if subscription %}
+        {% include '_product_search_pagination.html' %}
+  {% endif %}
+</div>
+<script>
+  window.products = {{ products | json }}
+  window.feeProducts = {{ products | selectattr("shopify_details.product_type", "equalto", "Recycling Fee") | list | json }} 
+</script>
+ 
+
+{% endblock %}
