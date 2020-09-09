@@ -1,0 +1,52 @@
+<style>
+    .field--error.address2 {
+        position: relative;
+        z-index: 99;
+    }
+
+    .field--error.address2 input[type="text"] {
+        float: initial;
+    }
+
+    .field--error.address2 #error-for-address2 {
+        display: block;
+    }
+
+    input#continue-button:disabled {
+        background-color: #aeaeae !important;
+    }
+</style>
+<script>
+    window.onload = function () {
+        function updateDOM() {
+            var totalFees = 0;
+            $('.order-summary__section--product-list .product').each(function (e) {
+                var productTitle = $(this).find('.product__info__name').find('strong').text()
+                if (productTitle.includes("Bottle Deposit") && window.location.href.indexOf("pay") > -1) {
+                    $(this).hide()
+                }
+            })
+
+            cart_json.line_items.forEach(function (e) {
+                if (e.title.includes("Bottle Deposit")) {
+                    var price = parseFloat(e.line_price)
+                    totalFees += price
+                }
+            })
+
+            if (totalFees > 0 && window.location.href.indexOf("pay") > -1) {
+                var markup =
+                    '<div class="total-line total-line--fee" data-fee="' + totalFees + '>' +
+                    '<span class="total-line__name">' +
+                    'Bottle Deposit Fee(s)' +
+                    '</span>' +
+                    '<strong class="total-line__price">$' + totalFees.toFixed(2) + '</strong>' +
+                    '</div>';
+                $('.order-summary__section[aria-label="order-summary"]').prepend(markup);
+            }
+
+        }
+
+        updateDOM()
+    }
+</script>
