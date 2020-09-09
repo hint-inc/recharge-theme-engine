@@ -11,7 +11,7 @@ Unfortunatly, there is no local editing for any of these files and all updates m
 Ideally, we'll never need touch these files again except in the event of a emergency with the new headless subscription center built on top of ReCharge's APIs and delivered to our theme via an application proxy.
 
 ### In the event of such emergency:
-1. Confirm this theme is uploaded and published to ReCharge's theme engine theme editor: https://drinkhint.myshopify.com/admin/apps/shopify-recurring-payments
+1. Confirm the /theme directory is uploaded and published to ReCharge's theme engine theme editor: https://drinkhint.myshopify.com/admin/apps/shopify-recurring-payments
 2. Update the theme subscription center settings on the published and/or staging Shopify theme (TBD): https://drinkhint.myshopify.com/admin/themes?channel=true
 3. All customers should now be redirected to the original ReCharge theme engine at: `https://www.drinkhint.com/tools/recurring/portal/<customer-hash>/subscriptions`
 
